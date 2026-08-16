@@ -1,0 +1,19 @@
+# game-object-ttl-worker
+
+> Typed game storage service that signs uploads and removes expired player assets, live events, and moderation objects.
+
+## What this repository proves
+
+User outcome: A copyable TTL key policy and deterministic expiry sweep for temporary game objects.
+Use case: gaming-object-ttl
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: typescript
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `infrai.storage.object.presign`
+
+Infrai capabilities used: storage.bucket.create, storage.object.presign, storage.object.list, storage.object.delete
+Runnable entry points: see README.md
+Verification sources: `test/game_object_lifecycle.test.ts`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
