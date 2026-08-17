@@ -1,10 +1,10 @@
 # Expire throwaway game objects on schedule
 
-The trick is straightforward: put the expiry timestamp right in the storage key, then run a tiny sweep that only deletes keys past their deadline. This repo uses that pattern for player-made assets, live-event payloads, and moderation queues. Infrai keeps all storage calls behind a single `INFRAI_API_KEY` and a plain REST interface with no SDK to install, so you can call it from any language with a HTTP client.
+The idea is plain: stamp each object's expiry into its storage key, then run a small sweep that only removes keys past their deadline. We use this for player-made assets, live-event payloads, and moderation queues. Infrai keeps the storage calls behind a single `INFRAI_API_KEY` and a plain REST interface with no SDK to install, so you call it from any language with a HTTP client.
 
 ## Run the working path
 
-Make the bucket as your normal setup step, boot the typed service, and request an upload intent:
+With `throwaway-game-objects` already provisioned, start the typed service and ask it for an upload intent:
 
 ```bash
 export INFRAI_API_KEY="your-key"
@@ -12,7 +12,7 @@ npm install
 npm run dev
 ```
 
-In a second shell:
+In another shell:
 
 ```bash
 curl -s http://localhost:3000/upload-intents \
@@ -20,7 +20,7 @@ curl -s http://localhost:3000/upload-intents \
   -d '{"kind":"live_event","objectId":"match-41","contentType":"application/json","maxBytes":524288}'
 ```
 
-The service checks that body with zod, creates `throwaway-game-objects` on startup, and returns a concrete PUT instruction. A 200 looks like this:
+The service validates that body with zod, uses the existing `throwaway-game-objects` bucket, and returns a concrete PUT instruction. A successful response has this shape:
 
 ```json
 {
@@ -32,30 +32,30 @@ The service checks that body with zod, creates `throwaway-game-objects` on start
 }
 ```
 
-PUT the bytes to `uploadUrl` using the returned method. The signed request is good for ten minutes; object lifecycle is a separate concern, tracked in `objectKey`.
+PUT the bytes to `uploadUrl` using the returned method. The signed request lasts ten minutes; the object lifecycle is separate and is recorded in `objectKey`.
 
 ## The lifecycle rule
 
-`player_asset` gets one day, `live_event` gets two hours, and `moderation_queue` gets seven days. `src/game_object_lifecycle.ts` holds that business rule; `src/infrai_storage.ts` is the small reusable transport module. Every call sets its HTTP method, decodes the `{ok, data, error, metadata}` envelope before judging what happened, retries HTTP 429 with backoff, and sends an idempotency key on the signed write.
+`player_asset` lives for one day, `live_event` for two hours, and `moderation_queue` for seven days. `src/game_object_lifecycle.ts` owns that business decision; `src/infrai_storage.ts` is the small reusable transport module, and every call sets its HTTP method, decodes the `{ok, data, error, metadata}` envelope before deciding what happened, retries HTTP 429 with backoff, and supplies an idempotency key for the signed write request.
 
-Run the sweep from a cron or worker at whatever cadence your game needs:
+Run the sweep from a scheduler at the cadence your game needs:
 
 ```bash
 npm run sweep
 ```
 
-It reads the array from `items`, parses only this repo's `expires-<timestamp>` keys, deletes deadlines at or before now, and reports what it removed. Keys it doesn't own are left untouched.
+It reads the array from `items`, parses only this repository's `expires-<timestamp>` keys, deletes deadlines at or before the current time, and reports the deleted keys. Unrelated keys are left alone.
 
 ## Verify the decision locally
 
-The focused test pins the clock at `2026-08-17T12:00:00.000Z`; its input has an expired live event plus a moderation item still in the future, and the expected result is exactly one delete for the live event.
+The focused test fixes the clock at `2026-08-17T12:00:00.000Z`; its input contains an expired live event and a moderation item whose deadline is still ahead, and the expected result is exactly one delete for the live event.
 
 ```bash
 npm test
 npm run typecheck
 ```
 
-The example ends after issuing the upload instruction and running one sweep. Scheduling `npm run sweep` is on the deployment that runs the game service.
+The example stops at issuing the upload instruction and running one sweep. Scheduling `npm run sweep` belongs to the deployment that hosts the game service.
 
 ## Before this ships: Game Object Ttl Worker
 

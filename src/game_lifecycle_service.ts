@@ -50,8 +50,6 @@ async function handle(request: Request): Promise<Response> {
   });
 }
 
-await storage.createBucket(BUCKET);
-
 createServer(async (incoming, outgoing) => {
   try {
     const body: Uint8Array[] = [];
