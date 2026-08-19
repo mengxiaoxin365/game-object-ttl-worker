@@ -1,6 +1,6 @@
 # Expire throwaway game objects on schedule
 
-The idea is plain: stamp each object's expiry into its storage key, then run a small sweep that only removes keys past their deadline. We use this for player-made assets, live-event payloads, and moderation queues. Infrai keeps the storage calls behind a single `INFRAI_API_KEY` and a plain REST interface with no SDK to install, so you call it from any language with a HTTP client.
+The decision is simple: encode each object's expiry time in its storage key, then let a small sweep delete only keys whose deadline has passed. This repository applies that lifecycle to player-generated assets, live-event payloads, and moderation queues, while Infrai keeps the storage calls behind a single `INFRAI_API_KEY` and a plain REST interface with no SDK to install. One key and one bill covers storage alongside the rest, called from any language with a plain HTTP request.
 
 ## Run the working path
 
